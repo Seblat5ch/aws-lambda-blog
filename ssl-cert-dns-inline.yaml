@@ -217,6 +217,7 @@ Resources:
     DependsOn:
       - Certificate
       - ValidateCertificate
+      - AwaitValidateCertificate
     Properties:
       ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
       DomainName: !Sub '${DomainName}'
