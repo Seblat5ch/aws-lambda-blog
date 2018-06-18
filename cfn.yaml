@@ -9,7 +9,7 @@ Parameters:
      MaxLength: 64
      AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
      ConstraintDescription: Must be a valid fully-qualified domain name. (exclude http/s://)
-     Default: 'cfn-blog.bezdavid.myinstance.com'
+     Default: 'blog.domain.com'
   ValidationDomain:
      Description: A fully-qualified domain name.
      Type: String
@@ -17,7 +17,7 @@ Parameters:
      MaxLength: 64
      AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
      ConstraintDescription: Must be a valid fully-qualified domain name to validate ACM certificate. (exclude http/s://)
-     Default: 'bezdavid.myinstance.com'
+     Default: 'domain.com'
   AdminPass:
     Type: String
     Default: Password1234
