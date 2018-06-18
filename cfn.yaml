@@ -3,24 +3,21 @@ Description: This stack creates a CI/CD pipeline to launch a serverless blog
 
 Parameters:
   SiteBaseUrl:
-     Description: A fully-qualified domain name.
+     Description: A fully-qualified domain name. eg. blog.domain.com (exclude http/s://)
      Type: String
      MinLength: 1
      MaxLength: 64
      AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
-     ConstraintDescription: Must be a valid fully-qualified domain name. (exclude http/s://)
-     Default: 'blog.domain.com'
+     ConstraintDescription: Must be a valid fully-qualified domain name.
   ValidationDomain:
-     Description: A fully-qualified domain name.
+     Description: A fully-qualified domain name. eg. domain.com (exclude http/s://)
      Type: String
      MinLength: 1
      MaxLength: 64
      AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
-     ConstraintDescription: Must be a valid fully-qualified domain name to validate ACM certificate. (exclude http/s://)
-     Default: 'domain.com'
+     ConstraintDescription: Must be a valid fully-qualified domain name to validate ACM certificate.
   AdminPass:
     Type: String
-    Default: Password1234
     Description: Password for admin login
     NoEcho: True
   SourceRepo:
@@ -34,7 +31,7 @@ Parameters:
       - PriceClass_100
       - PriceClass_200
       - PriceClass_All
-    Default: PriceClass_100
+    Default: PriceClass_200
 
 Outputs:
   GitRepo:
