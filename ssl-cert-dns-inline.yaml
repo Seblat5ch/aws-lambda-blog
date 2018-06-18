@@ -53,6 +53,7 @@ Resources:
                   - acm:Request*
                   - acm:Describe*
                   - acm:DeleteCertificate
+                  - acm:ListCertificates
                   - logs:Describe*
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
@@ -118,6 +119,59 @@ Resources:
                   response_data['exception'] = str(e)[0:255] + '... ' + msg
                   cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
 
+  CertificateAwaitValidationLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python2.7
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import boto3, json, traceback, time
+          import cfnresponse
+          import logging
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+              response_data = {}
+              try:
+                  client = boto3.client('acm',region_name=event['ResourceProperties']["CertRegion"])
+                  if event["RequestType"] == "Create" or event["RequestType"] == "Update":
+                      logger.info("Event Body - " + json.dumps(event))
+
+                      domain = event['ResourceProperties']['DomainName']
+
+                      # as long as we have at least 10 seconds left
+                      while context.get_remaining_time_in_millis() > 10000:
+                          time.sleep(5)
+                          resp = client.list_certificates(CertificateStatuses=['ISSUED'])
+                          if any(cert['DomainName'] == domain for cert in resp['CertificateSummaryList']):
+                              cert_info = [cert for cert in resp['CertificateSummaryList']
+                                           if cert['DomainName'] == domain][0]
+                              logger.info("Certificate has been issued for domain %s, ARN: %s" %
+                                       (domain, cert_info['CertificateArn']))
+                              cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+                              return True
+                          logger.info("Awaiting cert for domain %s" % domain)
+
+                      logger.warning("Timed out waiting for cert for domain %s" % domain)
+
+                      logger.info("Resposne - " + json.dumps(response_data))
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+
+                  elif event["RequestType"] == "Delete":
+                      logger.info("Event Body - " + json.dumps(event))
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS,{})
+                  else:
+                      logger.info("Event Body - " + json.dumps(event))
+                      cfnresponse.send(event, context, cfnresponse.FAILED,{})
+              except Exception as e:
+                  msg = 'See details in CloudWatch Log Stream: ' + context.log_stream_name
+                  response_data['exception'] = str(e)[0:255] + '... ' + msg
+                  cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
+
   Certificate:
     Type: Custom::ACM
     DependsOn:
@@ -142,3 +196,17 @@ Resources:
       TTL: '900'
       ResourceRecords:
         - !GetAtt Certificate.ResourceRecordValue
+
+  AwaitValidateCertificate:
+    Type: Custom::ValidateACM
+    DependsOn:
+      - Certificate
+      - ValidateCertificate
+    Properties:
+      ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
+      DomainName: !Sub '${DomainName}'
+      CertRegion:
+        Fn::If:
+          - HasCertRegion
+          - !Sub ${AWS::Region}
+          - Ref: CertRegion
