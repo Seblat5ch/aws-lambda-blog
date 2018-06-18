@@ -27,6 +27,14 @@ Parameters:
     Type: String
     Default: https://github.com/tinuva/aws-lambda-blog.git
     Description: Source repository
+  CloudFrontPriceClass:
+    Type: String
+    Description: CloudFront Price Class - https://aws.amazon.com/cloudfront/pricing/#element-45a38ab9-76b6-4294-9151-344c4ef2990e
+    AllowedValues:
+      - PriceClass_100
+      - PriceClass_200
+      - PriceClass_All
+    Default: PriceClass_100
 
 Outputs:
   GitRepo:
@@ -307,7 +315,8 @@ Resources:
                             "BuildArtifactsBucket": "${BuildArtifactsBucket}",
                             "SiteBaseUrl": "${SiteBaseUrl}",
                             "ValidationDomain": "${ValidationDomain}",
-                            "AdminPass": "${AdminPass}"
+                            "AdminPass": "${AdminPass}",
+                            "CloudFrontPriceClass": "${CloudFrontPriceClass}"
                           }
                       InputArtifacts:
                         - Name: BuiltZip
