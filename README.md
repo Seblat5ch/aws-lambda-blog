@@ -144,6 +144,6 @@ It runs completely serverless - free of any inflexible hardware infrastructure. 
 
  | AWS Region | Short name | |
  | -- | -- | -- |
-  | US East (N. Virginia) | us-east-1 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
- | US West (N. California) | us-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
- | EU (London) | eu-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
+  | US East (N. Virginia) | us-east-1 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=aws-lambda-blog&templateURL=http://s3.amazonaws.com/aws-lambda-blog/cfn.yaml) |
+ | US West (N. California) | us-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://s3.amazonaws.com/aws-lambda-blog/cfn.yaml) |
+ | EU (London) | eu-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://s3.amazonaws.com/aws-lambda-blog/cfn.yaml) |
