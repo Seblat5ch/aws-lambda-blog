@@ -210,3 +210,18 @@ Resources:
           - HasCertRegion
           - !Sub ${AWS::Region}
           - Ref: CertRegion
+
+  # Lambda limited to 5 minutes, lets add a second check
+  AwaitValidateCertificate2:
+    Type: Custom::ValidateACM
+    DependsOn:
+      - Certificate
+      - ValidateCertificate
+    Properties:
+      ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
+      DomainName: !Sub '${DomainName}'
+      CertRegion:
+        Fn::If:
+          - HasCertRegion
+          - !Sub ${AWS::Region}
+          - Ref: CertRegion
