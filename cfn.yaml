@@ -1,0 +1,471 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This stack creates a CI/CD pipeline to launch a serverless blog
+
+Parameters:
+  SiteBaseUrl:
+     Description: A fully-qualified domain name.
+     Type: String
+     MinLength: 1
+     MaxLength: 64
+     AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
+     ConstraintDescription: Must be a valid fully-qualified domain name. (exclude http/s://)
+     Default: 'cfn-blog.bezdavid.myinstance.com'
+  ValidationDomain:
+     Description: A fully-qualified domain name.
+     Type: String
+     MinLength: 1
+     MaxLength: 64
+     AllowedPattern: (?!-)[a-zA-Z0-9-.]*(?<!-)
+     ConstraintDescription: Must be a valid fully-qualified domain name to validate ACM certificate. (exclude http/s://)
+     Default: 'bezdavid.myinstance.com'
+  AdminPass:
+    Type: String
+    Default: Password1234
+    Description: Password for admin login
+    NoEcho: True
+  SourceRepo:
+    Type: String
+    Default: https://github.com/tinuva/aws-lambda-blog.git
+    Description: Source repository
+
+Outputs:
+  GitRepo:
+    Description: URL for Git Repo
+    Value: !GetAtt CodeRepository.CloneUrlHttp
+
+Resources:
+    ArticlesBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        Properties:
+          AccessControl: PublicRead
+          WebsiteConfiguration:
+            IndexDocument: index.html
+            ErrorDocument: 404.html
+
+    # DynamoDB --- START ---
+    objectsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: !Sub "${AWS::StackName}-local_objects"
+        AttributeDefinitions:
+          - AttributeName: object_id
+            AttributeType: S
+          - AttributeName: part
+            AttributeType: N
+        KeySchema:
+          - AttributeName: object_id
+            KeyType: HASH
+          - AttributeName: part
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    postsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: !Sub "${AWS::StackName}-local_posts"
+        AttributeDefinitions:
+          - AttributeName: post_id
+            AttributeType: S
+          - AttributeName: date
+            AttributeType: N
+          - AttributeName: post_status
+            AttributeType: S
+        KeySchema:
+          - AttributeName: post_id
+            KeyType: HASH
+          - AttributeName: date
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        GlobalSecondaryIndexes:
+        - IndexName: post_status-date-index
+          KeySchema:
+            - AttributeName: post_status
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+    # DynamoDB --- END ---
+
+    # Code repository for the service
+    CodeRepository:
+        Type: AWS::CodeCommit::Repository
+        Properties:
+            RepositoryName: !Sub '${AWS::StackName}_repo'
+            RepositoryDescription: !Sub 'Repository for the ${AWS::StackName} service'
+
+
+    # CodeBuild project and resources (S3 Bucket for build artifacts, Role, Project)
+    BuildArtifactsBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+    CodeBuildServiceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Action:
+                      - 'sts:AssumeRole'
+                    Effect: Allow
+                    Principal:
+                      Service:
+                        - codebuild.amazonaws.com
+            Path: /
+            Policies:
+                - PolicyName: CodeBuildAccess
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_build'
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_build:*'
+                        Action:
+                          - 'logs:CreateLogGroup'
+                          - 'logs:CreateLogStream'
+                          - 'logs:PutLogEvents'
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:s3:::${BuildArtifactsBucket}/*'
+                          - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
+                        Action:
+                          - 's3:GetObject'
+                          - 's3:GetObjectVersion'
+                          - 's3:PutObject'
+                          - 's3:PutObjectAcl'
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:s3:::${ArticlesBucket}'
+                        Action:
+                          - 's3:ListBucket'
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
+                          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
+                        Action:
+                          - 'dynamodb:*'
+    CodeBuildProject:
+        Type: AWS::CodeBuild::Project
+        Properties:
+            Name: !Sub '${AWS::StackName}_build'
+            Description: Build project for the Lambda service
+            Artifacts:
+              Type: CODEPIPELINE
+            Environment:
+                Type: LINUX_CONTAINER
+                ComputeType: BUILD_GENERAL1_SMALL
+                Image: aws/codebuild/nodejs:8.11.0
+                EnvironmentVariables:
+                  - Name: BUILD_OUTPUT_BUCKET
+                    Value: !Ref BuildArtifactsBucket
+                  - Name: ARTICLES_BUCKET
+                    Value: !Ref ArticlesBucket
+                  - Name: DYNAMODB_TABLE_POSTS
+                    Value: !Ref postsTable
+                  - Name: DYNAMODB_TABLE_OBJECTS
+                    Value: !Ref objectsTable
+
+            ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+            Source:
+                Type: CODEPIPELINE
+
+    # CodePipeline definition and required roles
+    CFNPipelinePolicy:
+        Type: AWS::IAM::ManagedPolicy
+        Properties:
+            Description: CloudFormation Pipeline Execution Policy
+            Path: "/"
+            PolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Effect: Allow
+                    Action:
+                        - 'cloudformation:CreateStack'
+                        - 'cloudformation:DescribeStacks'
+                        - 'cloudformation:DeleteStack'
+                        - 'cloudformation:UpdateStack'
+                        - 'cloudformation:CreateChangeSet'
+                        - 'cloudformation:ExecuteChangeSet'
+                        - 'cloudformation:DeleteChangeSet'
+                        - 'cloudformation:DescribeChangeSet'
+                        - 'cloudformation:SetStackPolicy'
+                        - 'cloudformation:SetStackPolicy'
+                        - 'cloudformation:ValidateTemplate'
+                        - 'codebuild:StartBuild'
+                        - 'codebuild:BatchGetBuilds'
+                    Resource: "*"
+    CloudFormationExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - cloudformation.amazonaws.com
+        Path: /
+        ManagedPolicyArns:
+          - 'arn:aws:iam::aws:policy/AdministratorAccess'
+    PipelineExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Action:
+                    - 'sts:AssumeRole'
+                    Effect: Allow
+                    Principal:
+                      Service:
+                        - codepipeline.amazonaws.com
+            Path: /
+            ManagedPolicyArns:
+                - 'arn:aws:iam::aws:policy/AWSCodeCommitFullAccess'
+                - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
+                - !Ref CFNPipelinePolicy
+            Policies:
+                - PolicyName: CodePipelineAccess
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                        - Action:
+                            - 'iam:PassRole'
+                            - 'lambda:InvokeFunction'
+                            - 'lambda:ListFunctions'
+                            - 'lambda:InvokeAsyc'
+                          Effect: Allow
+                          Resource: '*'
+    Pipeline:
+        Type: AWS::CodePipeline::Pipeline
+        Properties:
+            ArtifactStore:
+                Location: !Ref BuildArtifactsBucket
+                Type: S3
+            Name: !Sub ${AWS::StackName}_pipeline
+            RoleArn: !GetAtt PipelineExecutionRole.Arn
+            Stages:
+                - Name: Source
+                  Actions:
+                    - Name: CodeCommitRepo
+                      ActionTypeId:
+                        Category: Source
+                        Owner: AWS
+                        Provider: CodeCommit
+                        Version: 1
+                      Configuration:
+                        RepositoryName: !Sub '${AWS::StackName}_repo'
+                        BranchName: master
+                      OutputArtifacts:
+                        - Name: SourceZip
+                      RunOrder: 1
+                - Name: Build
+                  Actions:
+                    - Name: CodeBuild
+                      ActionTypeId:
+                        Category: Build
+                        Owner: AWS
+                        Provider: CodeBuild
+                        Version: 1
+                      Configuration:
+                        ProjectName: !Ref CodeBuildProject
+                      InputArtifacts:
+                        - Name: SourceZip
+                      OutputArtifacts:
+                        - Name: BuiltZip
+                - Name: Beta
+                  Actions:
+                    - Name: CreateChangeSet
+                      ActionTypeId:
+                        Category: Deploy
+                        Owner: AWS
+                        Provider: CloudFormation
+                        Version: 1
+                      Configuration:
+                        ActionMode: CHANGE_SET_REPLACE
+                        RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+                        StackName: !Sub '${AWS::StackName}-Stack-Beta'
+                        ChangeSetName: !Sub '${AWS::StackName}-ChangeSet-Beta'
+                        TemplatePath: BuiltZip::app-output_sam.yaml
+                        Capabilities: CAPABILITY_IAM
+                        ParameterOverrides: !Sub |
+                          {
+                            "Stage": "prod",
+                            "ObjectsTable": "${objectsTable}",
+                            "PostsTable": "${postsTable}",
+                            "ArticlesBucket": "${ArticlesBucket}",
+                            "BuildArtifactsBucket": "${BuildArtifactsBucket}",
+                            "SiteBaseUrl": "${SiteBaseUrl}",
+                            "ValidationDomain": "${ValidationDomain}",
+                            "AdminPass": "${AdminPass}"
+                          }
+                      InputArtifacts:
+                        - Name: BuiltZip
+                      RunOrder: 1
+                    - Name: ExecuteChangeSet
+                      ActionTypeId:
+                        Category: Deploy
+                        Owner: AWS
+                        Provider: CloudFormation
+                        Version: 1
+                      Configuration:
+                        ActionMode: CHANGE_SET_EXECUTE
+                        RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+                        StackName: !Sub '${AWS::StackName}-Stack-Beta'
+                        ChangeSetName: !Sub '${AWS::StackName}-ChangeSet-Beta'
+                      OutputArtifacts:
+                        - Name: !Sub '${AWS::StackName}BetaChangeSet'
+                      RunOrder: 2
+
+    # Clone Github repo to CodeCommit - eventually consistent
+    CodeBuildCloneServiceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: '2012-10-17'
+                Statement:
+                  - Action:
+                      - 'sts:AssumeRole'
+                    Effect: Allow
+                    Principal:
+                      Service:
+                        - codebuild.amazonaws.com
+            Path: /
+            ManagedPolicyArns:
+                - 'arn:aws:iam::aws:policy/AWSCodeCommitFullAccess'
+            Policies:
+                - PolicyName: CodeBuildCloneAccess
+                  PolicyDocument:
+                    Version: '2012-10-17'
+                    Statement:
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_clone_build'
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_clone_build:*'
+                        Action:
+                          - 'logs:CreateLogGroup'
+                          - 'logs:CreateLogStream'
+                          - 'logs:PutLogEvents'
+                      - Effect: Allow
+                        Resource:
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_clone_build'
+                          - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}_clone_build:*'
+                        Action:
+                          - 'logs:CreateLogGroup'
+                          - 'logs:CreateLogStream'
+                          - 'logs:PutLogEvents'
+
+    CodeBuildCloneProject:
+        Type: AWS::CodeBuild::Project
+        Properties:
+            Name: !Sub '${AWS::StackName}_clone_build'
+            Description: Clone github repo to codecommit
+            Artifacts:
+              Type: NO_ARTIFACTS
+            Environment:
+                Type: LINUX_CONTAINER
+                ComputeType: BUILD_GENERAL1_SMALL
+                Image: aws/codebuild/nodejs:8.11.0
+                EnvironmentVariables:
+                  - Name: DESTINATION_REPO
+                    Value: !GetAtt CodeRepository.CloneUrlHttp
+            ServiceRole: !GetAtt CodeBuildCloneServiceRole.Arn
+            Source:
+                Type: GITHUB
+                Location: !Ref SourceRepo
+                BuildSpec: |
+                  version: 0.2
+                  phases:
+                    build:
+                      commands:
+                        - git config --global credential.helper '!aws codecommit credential-helper $@'
+                        - git config --global credential.UseHttpPath true
+                        - cd $CODEBUILD_SRC_DIR; git push $DESTINATION_REPO
+
+    CloneExecutionRole:
+        Type: AWS::IAM::Role
+        Properties:
+            Policies:
+                - PolicyName: ApiLambdaPermissions
+                  PolicyDocument:
+                      Version: 2012-10-17
+                      Statement:
+                          -
+                              Action:
+                                  - codebuild:StartBuild
+                                  - logs:Describe*
+                                  - logs:CreateLogGroup
+                                  - logs:CreateLogStream
+                                  - logs:PutLogEvents
+                              Resource: "*"
+                              Effect: Allow
+            AssumeRolePolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                    -
+                      Action: sts:AssumeRole
+                      Principal:
+                          Service:
+                              - lambda.amazonaws.com
+                      Effect: Allow
+
+    CloneLambdaFunction:
+        Type: AWS::Lambda::Function
+        Properties:
+            Runtime: python2.7
+            Handler: index.handler
+            Role: !GetAtt CloneExecutionRole.Arn
+            Timeout: 50
+            Code:
+                ZipFile: |
+                    import boto3, json
+                    import cfnresponse
+                    import logging
+                    logger = logging.getLogger()
+                    logger.setLevel(logging.INFO)
+
+                    def handler(event, context):
+                            response_data = {}
+                            try:
+                                    cb = boto3.client('codebuild')
+                                    if event["RequestType"] == "Create" or event["RequestType"] == "Update":
+                                            logger.info("Event Body - " + json.dumps(event))
+                                            build = {
+                                              'projectName': event['ResourceProperties']['BuildProject']
+
+                                            }
+                                            logger.info('Starting build for project {0}'.format(build['projectName']))
+                                            cb.start_build(**build)
+                                            logger.info('Successfully launched a new CodeBuild project build!')
+                                            logger.info("Resposne - " + json.dumps(response_data))
+                                            cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+
+                                    elif event["RequestType"] == "Delete":
+                                            logger.info("Event Body - " + json.dumps(event))
+                                            cfnresponse.send(event, context, cfnresponse.SUCCESS,{})
+                                    else:
+                                            logger.info("Event Body - " + json.dumps(event))
+                                            cfnresponse.send(event, context, cfnresponse.FAILED,{})
+                            except Exception as e:
+                                    msg = 'See details in CloudWatch Log Stream: ' + context.log_stream_name
+                                    response_data['exception'] = str(e)[0:255] + '... ' + msg
+                                    cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
+
+    Clone:
+        Type: Custom::CodeBuildStart
+        DependsOn:
+            - CloneLambdaFunction
+            - CodeBuildCloneProject
+        Properties:
+            ServiceToken: !GetAtt CloneLambdaFunction.Arn
+            BuildProject: !Sub '${AWS::StackName}_clone_build'

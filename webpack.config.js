@@ -54,22 +54,12 @@ module.exports = {
   module: {
     loaders: [
       {
-        test: /\.js$/, loaders: [ 'babel' ], exclude: /node_modules/,
+        test: /\.json$/, loader: 'json'
       },
       {
-        test: /\.json$/, loader: 'json-loader'
-      }
-    ],
-    rules: [
-      {
-        test: /\.(js|jsx)$/,
-        exclude: /(node_modules|bower_components)/,
-        use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['env']
-          }
-        }
+        test: /\.js$/,
+        loaders: [ 'babel' ],
+        exclude: /node_modules/,
       }
     ]
   },
@@ -91,12 +81,10 @@ module.exports = {
       test: /\.js($|\?)/i,
       sourceMap: true,
       uglifyOptions: {
-          compress: true
+          compress: true,
+          keep_classnames: true,
+          keep_fnames: true
       }
-    }),
-    new DotEnvEmitter({
-      env: require(DotEnvEmitter.envfiles(stage))
     })
-  ],
-  bail: true
+  ]
 }

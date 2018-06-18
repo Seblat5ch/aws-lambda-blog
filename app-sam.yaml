@@ -1,0 +1,683 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: BlogApi
+
+Parameters:
+  Stage:
+    Type: String
+    AllowedValues:
+      - beta
+      - gamma
+      - prod
+    Default: prod
+    Description: Stage that can be added to resource names
+  ObjectsTable:
+    Type: String
+    Default: LBP-local_objects
+    Description: objects table
+  PostsTable:
+    Type: String
+    Default: LBP-local_posts
+    Description: posts table
+  SiteBaseUrl:
+    Type: String
+    Default: lbp-lbp.s-media.si
+    Description: Base URL for website
+  ValidationDomain:
+    Type: String
+    Default: lbp-lbp.s-media.si
+    Description: Must be a valid fully-qualified domain name to validate ACM certificate. (exclude http/s://)
+  ArticlesBucket:
+    Type: String
+    Default: blogbucket
+    Description: Bucket name for articles
+  ArticlesBucketPath:
+    Type: String
+    Default: static/articles
+    Description: Path to articles in ArticlesBucket
+  BuildArtifactsBucket:
+    Type: String
+    Default: buildbucket
+    Description: Bucket name for build artifacts
+  AdminPass:
+    Type: String
+    Default: Password1234
+    Description: Password for admin login
+    NoEcho: True
+  Email:
+    Type: String
+    Default: no-reply@domain.com
+    Description: Admin Email Address
+  RecaptchaSiteKey:
+    Type: String
+    Default: 6LeB4CEUAAAAAEou-1Xky9hfTfQN69v2a7CLWdV0
+  RecaptchaPrivKey:
+    Type: String
+    Default: 6LeB4CEUAAAAAP_Je_0eNd0QZJe6HtN7GQy-xAb1
+  TokenName:
+    Type: String
+    Default: token
+  DisqusSubdomain:
+    Type: String
+    Default: my_disqus_subdomain
+
+Outputs:
+  ApiUrl:
+    Description: URL for application
+    Value: !Sub 'https://${BlogApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+  CertificateArn:
+    Description: SSL certificate ARN
+    Value: !GetAtt ACM.Outputs.CertificateArn
+
+Globals:
+  Api:
+    EndpointConfiguration: EDGE
+    Variables:
+      objects_table: !Ref ObjectsTable
+      posts_table: !Ref PostsTable
+      site_base_url: !Sub "https://${SiteBaseUrl}" # must start with https://
+      signing_key: !GetAtt SigningKey.Outputs.TheRandomString
+      template: default
+      articles_bucket: !Ref ArticlesBucket
+      articles_bucket_path: !Ref ArticlesBucketPath
+      admin_pass: !Ref AdminPass
+      contact_send_email: !Ref Email
+      recaptcha_siteKey: !Ref RecaptchaSiteKey
+      recaptcha_privKey: !Ref RecaptchaPrivKey
+      token_name: !Ref TokenName
+      disqus_subdomain: !Ref DisqusSubdomain
+  Function:
+    Runtime: nodejs6.10
+    Timeout: 180
+
+Resources:
+
+# Requirements --- START ---
+  SigningKey:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3-${AWS::Region}.amazonaws.com/${BuildArtifactsBucket}/cfn-signgen.yaml
+      Parameters:
+        Length: 21
+
+  ACM:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3-${AWS::Region}.amazonaws.com/${BuildArtifactsBucket}/ssl-cert-dns-inline.yaml
+      Parameters:
+        DomainName: !Sub ${SiteBaseUrl}
+        ValidationDomain: !Sub ${ValidationDomain}
+        CertRegion: us-east-1
+# Requirements --- END ---
+
+# API Gateway --- START ---
+  BlogApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      #DefinitionUri: install/swagger.yaml
+      DefinitionBody:
+          'Fn::Transform':
+            Name: 'AWS::Include'
+            # Replace <bucket> with your bucket name
+            Parameters:
+              Location: !Sub s3://${BuildArtifactsBucket}/swagger.yaml
+
+  get:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get1:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
+            RestApiId: !Ref BlogApi
+        get2:
+          Type: Api
+          Properties:
+            Path: /page
+            Method: get
+            RestApiId: !Ref BlogApi
+        get3:
+          Type: Api
+          Properties:
+            Path: /page/{page}
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  about:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: about.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /about
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  aboutPermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref about
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${BlogApi.RootResourceId}/${Stage}>/GET/about
+
+  addCategory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: add_category.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /add-category
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  getPostsByCategory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_posts_by_category.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get1:
+          Type: Api
+          Properties:
+            Path: /category/{category-id}
+            Method: get
+            RestApiId: !Ref BlogApi
+        get2:
+          Type: Api
+          Properties:
+            Path: /category/{category-id}/page
+            Method: get
+            RestApiId: !Ref BlogApi
+        get3:
+          Type: Api
+          Properties:
+            Path: /category/{category-id}/page/{page}
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  contact:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: contact.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /contact
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  deletePost:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: delete_post.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /delete-post
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  editCategory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: edit_category.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /edit-category
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  getCategories:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_categories.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /get-categories
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  getPostAdmin:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_post_admin.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /get-post-admin
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  getSettings:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_settings.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /get-settings
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  getTemplates:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_templates.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /get-templates
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  listPosts:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: list_posts.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /list
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  listPostsAdmin:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: list_posts_admin.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /list-posts-admin
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  login:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: login.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /login
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  moveCategory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: move_category.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /move-category
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  getPost:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: get_post.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /post/{post-id}
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  publishPost:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: publish_post.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /publish-post
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  removeCategory:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: remove_category.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /remove-category
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  rss:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: rss.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        get:
+          Type: Api
+          Properties:
+            Path: /rss
+            Method: get
+            RestApiId: !Ref BlogApi
+
+  sendMessage:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: send_message.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /send-message
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  setSettings:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: set_settings.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /set-settings
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  uploadPost:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload_post.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /submit-post
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  unpublishPost:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: unpublish_post.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /unpublish-post
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  uploadImage:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload_image.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /upload-image
+            Method: post
+            RestApiId: !Ref BlogApi
+
+  uploadTemplateImage:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: upload_template_image.handler
+      CodeUri: build/
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        post:
+          Type: Api
+          Properties:
+            Path: /upload-template-image
+            Method: post
+            RestApiId: !Ref BlogApi
+# API Gateway --- END ---
+
+# CDN --- START ---
+  BlogCDN:
+    Type: AWS::CloudFront::Distribution
+    DependsOn: #without those explicit depends, the creation just fails
+      - BlogApi
+      - ACM
+    Properties:
+      DistributionConfig:
+        # --- CDN: Settings ---
+        Enabled: true
+        Comment: !Ref SiteBaseUrl
+        DefaultRootObject: ''
+        PriceClass: PriceClass_100 # PriceClass_All / PriceClass_100
+        WebACLId: ''
+        HttpVersion: 'http1.1'
+
+        ViewerCertificate:
+          AcmCertificateArn: !GetAtt ACM.Outputs.CertificateArn
+          MinimumProtocolVersion: 'TLSv1'
+          SslSupportMethod: 'sni-only'
+
+        Aliases:
+          - !Ref SiteBaseUrl
+
+        # --- CDN: Origins ---
+        Origins:
+          - DomainName: !Sub "${ArticlesBucket}.s3-website.${AWS::Region}.amazonaws.com" #define the s3 origin
+            Id: static
+            CustomOriginConfig:
+              OriginProtocolPolicy: http-only #again API-Gateway only supports https
+            OriginPath: ''
+          - DomainName: !Sub '${BlogApi}.execute-api.${AWS::Region}.amazonaws.com' #define the API Gateway origin
+            Id: api
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only #again API-Gateway only supports https
+            OriginPath: !Sub "/${Stage}" #name of the deployed stage
+
+        # --- CDN: CacheBehaviors ---
+        DefaultCacheBehavior: #this section defines attached behaviors, first the API Gateway
+          ForwardedValues:
+            Cookies:
+              Forward: 'all'
+            QueryString: true
+            Headers: #define explicit headers, since API Gateway doesn't work otherwise
+              - Accept
+              - Referer
+              - Athorization
+              - Content-Type
+          MinTTL: 0
+          TargetOriginId: api #name of the origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - POST
+            - PUT
+            - PATCH
+            - OPTIONS
+            - DELETE
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          DefaultTTL: 0
+          MaxTTL: 0
+          SmoothStreaming: false
+
+        CacheBehaviors: #second the behavior for the API Gateway
+          - AllowedMethods: #allow all method for the backend to implement
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            CachedMethods: #cache only on get requests
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              Cookies:
+                Forward: 'all'
+              QueryString: true #to transfer get parameters to the gateway
+            PathPattern: "/images*" #path pattern after the Gateway stage identifier.
+            TargetOriginId: static #id of the orignin
+            ViewerProtocolPolicy: redirect-to-https #API Gateway only support https
+            MinTTL: 0
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            SmoothStreaming: false
+          - AllowedMethods: #allow all method for the backend to implement
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            CachedMethods: #cache only on get requests
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              Cookies:
+                Forward: 'all'
+              QueryString: true #to transfer get parameters to the gateway
+            PathPattern: "/static*" #path pattern after the Gateway stage identifier.
+            TargetOriginId: static #id of the orignin
+            ViewerProtocolPolicy: redirect-to-https #API Gateway only support https
+            MinTTL: 0
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            SmoothStreaming: false
+          - AllowedMethods: #allow all method for the backend to implement
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            CachedMethods: #cache only on get requests
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              Cookies:
+                Forward: 'all'
+              QueryString: true #to transfer get parameters to the gateway
+            PathPattern: "/admin*" #path pattern after the Gateway stage identifier.
+            TargetOriginId: static #id of the orignin
+            ViewerProtocolPolicy: redirect-to-https #API Gateway only support https
+            MinTTL: 0
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            SmoothStreaming: false
+          - AllowedMethods: #allow all method for the backend to implement
+              - DELETE
+              - GET
+              - HEAD
+              - OPTIONS
+              - PATCH
+              - POST
+              - PUT
+            CachedMethods: #cache only on get requests
+              - GET
+              - HEAD
+            Compress: true
+            ForwardedValues:
+              Cookies:
+                Forward: 'all'
+              QueryString: true #to transfer get parameters to the gateway
+            PathPattern: "/favicon.ico" #path pattern after the Gateway stage identifier.
+            TargetOriginId: static #id of the orignin
+            ViewerProtocolPolicy: redirect-to-https #API Gateway only support https
+            MinTTL: 0
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            SmoothStreaming: false
+# CDN --- END ---
+
+# DNS --- START ---
+  DnsRecord:
+    Type: AWS::Route53::RecordSet
+    DependsOn: BlogCDN
+    Properties:
+      HostedZoneName: !Sub '${ValidationDomain}.'
+      Comment: !Sub ${AWS::StackName}
+      Name: !Sub ${SiteBaseUrl}
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2
+        DNSName: !GetAtt BlogCDN.DomainName
+# DNS --- END ---

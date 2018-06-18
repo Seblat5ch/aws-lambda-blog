@@ -1,0 +1,33 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Build enviromment `uname -a` `aws --version 2>&1` node/`node --version` npm/`npm --version`
+      - echo "Installing dependencies - `pwd`"
+      - npm install || (cat /root/.npm/_logs/*-debug.log && false)
+      - echo "dependencies install completed `date`"
+  build:
+    commands:
+      - echo "Starting build `date` in `pwd`"
+      - npm run-script build
+      - echo "Copy templates to build"
+      - cp -Rv lambdas/templates/* build/
+  post_build:
+    commands:
+      - echo "Create CloudFormation package `date`"
+      - aws s3 cp install/swagger.yaml "s3://${BUILD_OUTPUT_BUCKET}/"
+      - aws s3 cp cfn-signgen.yaml "s3://${BUILD_OUTPUT_BUCKET}/"
+      - aws s3 cp ssl-cert-dns-inline.yaml "s3://${BUILD_OUTPUT_BUCKET}/"
+      - aws cloudformation package --template-file app-sam.yaml --s3-bucket $BUILD_OUTPUT_BUCKET --output-template-file app-output_sam.yaml
+      - echo "Seed DynamoDB tables if empty `date`"
+      - node install/install_seed_ddb_cli.js
+      - echo "Sync S3 Articles Bucket ${ARTICLES_BUCKET}"
+      - aws s3 sync public/ "s3://${ARTICLES_BUCKET}/" --acl public-read
+      - echo "build completed on `date`"
+
+artifacts:
+  type: zip
+  files:
+    - app-output_sam.yaml
+    #- test-output_sam.yaml
