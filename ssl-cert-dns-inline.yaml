@@ -142,6 +142,7 @@ Resources:
                       logger.info("Event Body - " + json.dumps(event))
 
                       domain = event['ResourceProperties']['DomainName']
+                      fail_on_timeout = event['ResourceProperties']['FailOnTimeout']
 
                       # as long as we have at least 10 seconds left
                       while context.get_remaining_time_in_millis() > 10000:
@@ -157,6 +158,9 @@ Resources:
                           logger.info("Awaiting cert for domain %s" % domain)
 
                       logger.warning("Timed out waiting for cert for domain %s" % domain)
+                      if fail_on_timeout == 'true':
+                          cfnresponse.send(event, context, cfnresponse.FAILED,{})
+                          return False
 
                       logger.info("Resposne - " + json.dumps(response_data))
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
@@ -197,14 +201,13 @@ Resources:
       ResourceRecords:
         - !GetAtt Certificate.ResourceRecordValue
 
-  AwaitValidateCertificate:
+  AwaitValidateCertificate1:
     Type: Custom::ValidateACM
-    DependsOn:
-      - Certificate
-      - ValidateCertificate
+    DependsOn: ValidateCertificate
     Properties:
       ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
       DomainName: !Sub '${DomainName}'
+      FailOnTimeout: False
       CertRegion:
         Fn::If:
           - HasCertRegion
@@ -214,13 +217,25 @@ Resources:
   # Lambda limited to 5 minutes, lets add a second check
   AwaitValidateCertificate2:
     Type: Custom::ValidateACM
-    DependsOn:
-      - Certificate
-      - ValidateCertificate
-      - AwaitValidateCertificate
+    DependsOn: AwaitValidateCertificate1
     Properties:
       ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
       DomainName: !Sub '${DomainName}'
+      FailOnTimeout: False
+      CertRegion:
+        Fn::If:
+          - HasCertRegion
+          - !Sub ${AWS::Region}
+          - Ref: CertRegion
+
+  # Lambda limited to 5 minutes, lets add a second check
+  AwaitValidateCertificate3:
+    Type: Custom::ValidateACM
+    DependsOn: AwaitValidateCertificate2
+    Properties:
+      ServiceToken: !GetAtt CertificateAwaitValidationLambdaFunction.Arn
+      DomainName: !Sub '${DomainName}'
+      FailOnTimeout: True
       CertRegion:
         Fn::If:
           - HasCertRegion
