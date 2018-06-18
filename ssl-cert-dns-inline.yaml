@@ -228,7 +228,7 @@ Resources:
           - !Sub ${AWS::Region}
           - Ref: CertRegion
 
-  # Lambda limited to 5 minutes, lets add a second check
+  # Lambda limited to 5 minutes, lets add a third check
   AwaitValidateCertificate3:
     Type: Custom::ValidateACM
     DependsOn: AwaitValidateCertificate2
