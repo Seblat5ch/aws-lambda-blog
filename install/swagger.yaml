@@ -1,0 +1,1139 @@
+---
+swagger: 2.0
+info:
+  title: blog
+basePath: /prod
+schemes:
+  - https
+paths:
+  /:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |
+            {
+                "posts_table": "${stageVariables.posts_table}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "objects_table": "${stageVariables.objects_table}",
+                "categories_posts_table": "${stageVariables.categories_posts_table}",
+
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "template": "${stageVariables.template}"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${get.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /about:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |
+            {
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+              "site_base_url": "${stageVariables.site_base_url}",
+              "template": "${stageVariables.template}"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${about.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /add-category:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "token_name": "${stageVariables.token_name}",
+                "cookie": "$input.params('Cookie')",
+                "category": $input.json('$.category')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${addCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  '/category/{category-id}':
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "template": "${stageVariables.template}",
+
+              "method": "$context.httpMethod",
+              "body" : $input.json('$'),
+              "headers": {
+                #foreach($param in $input.params().header.keySet())
+                "$param": "$util.escapeJavaScript($input.params().header.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "queryParams": {
+                #foreach($param in $input.params().querystring.keySet())
+                "$param": "$util.escapeJavaScript($input.params().querystring.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "pathParams": {
+                #foreach($param in $input.params().path.keySet())
+                "$param": "$util.escapeJavaScript($input.params().path.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              }
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getPostsByCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  '/category/{category-id}/page':
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path("$")
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "template": "${stageVariables.template}",
+
+              "method": "$context.httpMethod",
+              "body" : $input.json('$'),
+              "headers": {
+                #foreach($param in $input.params().header.keySet())
+                "$param": "$util.escapeJavaScript($input.params().header.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "queryParams": {
+                #foreach($param in $input.params().querystring.keySet())
+                "$param": "$util.escapeJavaScript($input.params().querystring.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "pathParams": {
+                #foreach($param in $input.params().path.keySet())
+                "$param": "$util.escapeJavaScript($input.params().path.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              }
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getPostsByCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  '/category/{category-id}/page/{page}':
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: category-id
+          in: path
+          required: true
+          type: string
+        - name: page
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path("$")
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "template": "${stageVariables.template}",
+
+              "method": "$context.httpMethod",
+              "body" : $input.json('$'),
+              "headers": {
+                #foreach($param in $input.params().header.keySet())
+                "$param": "$util.escapeJavaScript($input.params().header.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "queryParams": {
+                #foreach($param in $input.params().querystring.keySet())
+                "$param": "$util.escapeJavaScript($input.params().querystring.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "pathParams": {
+                #foreach($param in $input.params().path.keySet())
+                "$param": "$util.escapeJavaScript($input.params().path.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              }
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getPostsByCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /contact:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |
+            {
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "captcha_key": "${stageVariables.recaptcha_siteKey}",
+              "site_base_url": "${stageVariables.site_base_url}",
+              "template": "${stageVariables.template}"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${contact.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /delete-post:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |-
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "cookie": "$input.params('Cookie')",
+
+                "posts_table": "${stageVariables.posts_table}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+
+                "post_id": $input.json("$.post_id")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${deletePost.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /edit-category:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "cookie": "$input.params('Cookie')",
+
+                "category_id": $input.json('$.category_id'),
+                "category_name": $input.json('$.category_name')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${editCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /get-categories:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "token_name": "${stageVariables.token_name}",
+                "cookie": "$input.params('Cookie')"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getCategories.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /get-post-admin:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+               "signing_key": "${stageVariables.signing_key}",
+                "posts_table": "${stageVariables.posts_table}",
+                "token_name": "${stageVariables.token_name}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+
+                "cookie": "$input.params('Cookie')",
+
+                "post_id": $input.json("$.post_id")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getPostAdmin.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /get-settings:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "cookie": "$input.params('Cookie')"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getSettings.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /get-templates:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "cookie": "$input.params('Cookie')"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getTemplates.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /list:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |
+            {
+                "posts_table": "${stageVariables.posts_table}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "template": "${stageVariables.template}"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${listPosts.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /list-posts-admin:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "posts_table": "${stageVariables.posts_table}",
+                "cookie": "$input.params('Cookie')"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${listPostsAdmin.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /login:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Set-Cookie:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Set-Cookie: integration.response.body.Cookie
+            responseTemplates:
+              application/json: |-
+                {
+                 "success": $input.json('$.success')
+                }
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "admin_pass": "${stageVariables.admin_pass}",
+                "user_pass": $input.json('$.password'),
+                "remember_me": $input.json('$.remember_me')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${login.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /move-category:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "cookie": "$input.params('Cookie')",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "category_id": $input.json('$.category_id'),
+                "direction": $input.json('$.direction')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${moveCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /page:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "template": "${stageVariables.template}",
+
+              "method": "$context.httpMethod",
+              "body" : $input.json('$'),
+              "headers": {
+                #foreach($param in $input.params().header.keySet())
+                "$param": "$util.escapeJavaScript($input.params().header.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "queryParams": {
+                #foreach($param in $input.params().querystring.keySet())
+                "$param": "$util.escapeJavaScript($input.params().querystring.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "pathParams": {
+                #foreach($param in $input.params().path.keySet())
+                "$param": "$util.escapeJavaScript($input.params().path.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              }
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${get.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  '/page/{page}':
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: page
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |-
+            {
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "posts_table": "${stageVariables.posts_table}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "template": "${stageVariables.template}",
+
+              "method": "$context.httpMethod",
+              "body" : $input.json('$'),
+              "headers": {
+                #foreach($param in $input.params().header.keySet())
+                "$param": "$util.escapeJavaScript($input.params().header.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "queryParams": {
+                #foreach($param in $input.params().querystring.keySet())
+                "$param": "$util.escapeJavaScript($input.params().querystring.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              },
+              "pathParams": {
+                #foreach($param in $input.params().path.keySet())
+                "$param": "$util.escapeJavaScript($input.params().path.get($param))" #if($foreach.hasNext),#end
+
+                #end
+              }
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${get.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  '/post/{post-id}':
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: post-id
+          in: path
+          required: true
+          type: string
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''text/html'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: "{\r\n    \"site_base_url\": \"${stageVariables.site_base_url}\",\r\n\r\n    \"posts_table\": \"${stageVariables.posts_table}\",\r\n    \"objects_table\": \"${stageVariables.objects_table}\",\r\n\r\n    \"articles_bucket\": \"${stageVariables.articles_bucket}\",\r\n    \"articles_bucket_path\": \"${stageVariables.articles_bucket_path}\",\r\n    \"template\": \"${stageVariables.template}\",\r\n    \"disqus_subdomain\": \"${stageVariables.disqus_subdomain}\",\r\n\r\n  \"method\": \"$context.httpMethod\",\r\n  \"body\" : $input.json('$'),\r\n  \"headers\": {\r\n    #foreach($param in $input.params().header.keySet())\r\n    \"$param\": \"$util.escapeJavaScript($input.params().header.get($param))\" #if($foreach.hasNext),#end\r\n\r\n    #end\r\n  },\r\n  \"queryParams\": {\r\n    #foreach($param in $input.params().querystring.keySet())\r\n    \"$param\": \"$util.escapeJavaScript($input.params().querystring.get($param))\" #if($foreach.hasNext),#end\r\n\r\n    #end\r\n  },\r\n  \"pathParams\": {\r\n    #foreach($param in $input.params().path.keySet())\r\n    \"$param\": \"$util.escapeJavaScript($input.params().path.get($param))\" #if($foreach.hasNext),#end\r\n\r\n    #end\r\n  }  \r\n}"
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getPost.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /publish-post:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |-
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "posts_table": "${stageVariables.posts_table}",
+
+                "cookie": "$input.params('Cookie')",
+
+                "post_id": $input.json("$.post_id"),
+                "date": $input.json("$.date")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${publishPost.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /remove-category:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "cookie": "$input.params('Cookie')",
+                "objects_table": "${stageVariables.objects_table}",
+                 "token_name": "${stageVariables.token_name}",
+
+                "category_id": $input.json("$.category_id"),
+                "precedence": $input.json("$.precedence")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${removeCategory.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /rss:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+          headers:
+            Content-Type:
+              type: string
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+            responseParameters:
+              method.response.header.Content-Type: '''application/rss+xml'''
+            responseTemplates:
+              application/json: $input.path('$')
+        requestTemplates:
+          application/json: |
+            {
+                "posts_table": "${stageVariables.posts_table}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "site_base_url": "${stageVariables.site_base_url}",
+
+                "template": "${stageVariables.template}"
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${rss.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        contentHandling: CONVERT_TO_TEXT
+        type: aws
+  /send-message:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |-
+            {
+                "recaptcha_privKey": "${stageVariables.recaptcha_privKey}",
+                "contact_send_email": "${stageVariables.contact_send_email}",
+
+                "name": $input.json("$.name"),
+                "email": $input.json("$.email"),
+                "message": $input.json("$.message"),
+                "captchaResponse": $input.json("$.captcha")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${sendMessage.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /set-settings:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "cookie": "$input.params('Cookie')",
+                "objects_table": "${stageVariables.objects_table}",
+
+                "new_settings": $input.json("$.new_settings")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${setSettings.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /submit-post:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "posts_table": "${stageVariables.posts_table}",
+
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+
+                "cookie": "$input.params('Cookie')",
+
+                "post_id": $input.json('$.post_id'),
+                "post_status": $input.json('$.post_status'),
+                "title": $input.json('$.title'),
+                "categories": $input.json('$.categories'),
+                "date": $input.json('$.date'),
+                "html": $input.json('$.html')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${uploadPost.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /unpublish-post:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |-
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "posts_table": "${stageVariables.posts_table}",
+
+                "cookie": "$input.params('Cookie')",
+
+                "post_id": $input.json("$.post_id"),
+                "date": $input.json("$.date")
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${unpublishPost.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /upload-image:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "articles_table": "${stageVariables.articles_table}",
+                "objects_table": "${stageVariables.objects_table}",
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+
+                "image_resize_max_height": "${stageVariables.image_resize_max_height}",
+                "image_resize_max_width": "${stageVariables.image_resize_max_width}",
+
+                "cookie": "$input.params('Cookie')",
+                "image": $input.json('$.image')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${uploadImage.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+  /upload-template-image:
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: 200 response
+          schema:
+            $ref: '#/definitions/Empty'
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: '200'
+        requestTemplates:
+          application/json: |
+            {
+                "signing_key": "${stageVariables.signing_key}",
+                "token_name": "${stageVariables.token_name}",
+                "articles_table": "${stageVariables.articles_table}",
+                "objects_table": "${stageVariables.objects_table}",
+                "articles_bucket": "${stageVariables.articles_bucket}",
+                "articles_bucket_path": "${stageVariables.articles_bucket_path}",
+
+                "image_resize_max_height": "${stageVariables.image_resize_max_height}",
+                "image_resize_max_width": "${stageVariables.image_resize_max_width}",
+
+                "cookie": "$input.params('Cookie')",
+                "image": $input.json('$.image')
+            }
+        uri:
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${uploadTemplateImage.Arn}/invocations"
+        passthroughBehavior: when_no_templates
+        httpMethod: POST
+        type: aws
+definitions:
+  Empty:
+    type: object
+    title: Empty Schema
