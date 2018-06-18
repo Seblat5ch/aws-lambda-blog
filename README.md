@@ -8,6 +8,7 @@
  * [Installation prerequisites](#prerequisites)
  * [Installation](#installation)
  * [Advanced installation](#installation_advanced)
+ * [CloudFormation installation](#installation_cloudformation) ![#f03c15](https://placehold.it/15/f03c15/000000?text=+) New!
 
 ## <a name="about"></a>About
  ![alt tag](https://s3-us-west-2.amazonaws.com/s-media.si/static/img/LBP_perspective_UI.jpg)
@@ -136,3 +137,13 @@ It runs completely serverless - free of any inflexible hardware infrastructure. 
  * Change values in `install/install_config.js`
  * Run ```node install_advanced.js```
  * If everything went smoothly you should see your page after CloudFront changes resolve, which usually takes around 15 minutes
+
+## <a name="installation_cloudformation"></a>CloudFormation installation
+ * Have an AWS account
+ * Have your domain/subdomain set up in Route53
+
+ | AWS Region | Short name | |
+ | -- | -- | -- |
+  | US East (N. Virginia) | us-east-1 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
+ | US West (N. California) | us-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
+ | EU (London) | eu-west-2 | [![cloudformation-launch-button](images/cloudformation-launch-stack.png)](https://console.aws.amazon.com/cloudformation/home?region=eu-west-2#/stacks/new?stackName=aws-lambda-blog&templateURL=http://aws-lambda-blog.s3-website.eu-west-2.amazonaws.com/cfn.yaml) |
