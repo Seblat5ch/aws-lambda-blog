@@ -357,7 +357,7 @@ Resources:
                         StackName: !Sub '${AWS::StackName}-Stack-Beta'
                         ChangeSetName: !Sub '${AWS::StackName}-ChangeSet-Beta'
                         TemplatePath: BuiltZip::app-output_sam.yaml
-                        Capabilities: CAPABILITY_IAM
+                        Capabilities: CAPABILITY_NAMED_IAM
                         ParameterOverrides: !Sub |
                           {
                             "Stage": "prod",
