@@ -1,4 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
+Description: This stack creates an ACM certificate and validate it using DNS
 
 Parameters:
   DomainName:

@@ -68,17 +68,28 @@ Parameters:
   RecaptchaSiteKey:
     Type: String
     Default: 6LeB4CEUAAAAAEou-1Xky9hfTfQN69v2a7CLWdV0
+    Description: https://www.google.com/recaptcha
   RecaptchaPrivKey:
     Type: String
     Default: 6LeB4CEUAAAAAP_Je_0eNd0QZJe6HtN7GQy-xAb1
   DisqusSubdomain:
     Type: String
     Default: my_disqus_subdomain
+    Description: https://disqus.com/
 
 Outputs:
-  GitRepo:
+  CodeCommitGitRepo:
     Description: URL for Git Repo
     Value: !GetAtt CodeRepository.CloneUrlHttp
+  CodeCommitConsole:
+    Description: Link to CodeCommit console for repo
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codecommit/home?region=${AWS::Region}#/repository/${AWS::StackName}_repo'
+  CodeBuildCloneRepoConsole:
+    Description: Link to CodeBuild clone github repo console
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codebuild/home?region=${AWS::Region}#/projects/${AWS::StackName}_clone_build/view'
+  PipelineConsole:
+    Description: Link to Pipeline console
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${AWS::StackName}_pipeline'
 
 Resources:
     ArticlesBucket:
