@@ -153,28 +153,6 @@ Resources:
             WriteCapacityUnits: 1
     # DynamoDB --- END ---
 
-    # Lambda policy for Lambdas
-    LambdaPolicy:
-      Type: AWS::IAM::ManagedPolicy
-      Properties:
-        Description: Policy for API Lambda functions
-        ManagedPolicyName: !Sub '${AWS::StackName}_LambdaPolicy'
-        Path: "/"
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-            -
-              Effect: Allow
-              Action: 'dynamodb:*'
-              Resource:
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
-                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
-            -
-              Effect: Allow
-              Action: 's3:*'
-              Resource:
-                - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
-
     # Code repository for the service
     CodeRepository:
         Type: AWS::CodeCommit::Repository
@@ -386,7 +364,6 @@ Resources:
                             "ObjectsTable": "${objectsTable}",
                             "PostsTable": "${postsTable}",
                             "ArticlesBucket": "${ArticlesBucket}",
-                            "LambdaPolicyName": "${AWS::StackName}_LambdaPolicy",
                             "BuildArtifactsBucket": "${BuildArtifactsBucket}",
                             "SiteBaseUrl": "${SiteBaseUrl}",
                             "ValidationDomain": "${ValidationDomain}",
