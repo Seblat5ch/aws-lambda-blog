@@ -118,24 +118,24 @@ Resources:
         CertRegion: us-east-1
 
   LambdaPolicy:
-  Type: "AWS::IAM::ManagedPolicy"
-  Properties:
-    Description: "Policy for API Lambda functions"
-    Path: "/"
-    PolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        -
-          Effect: "Allow"
-          Action: "dynamodb:*"
-          Resource:
-            - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
-            - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
-        -
-          Effect: "Allow"
-          Action: "s3:*"
-          Resource:
-            - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: "Policy for API Lambda functions"
+      Path: "/"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action: "dynamodb:*"
+            Resource:
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
+          -
+            Effect: "Allow"
+            Action: "s3:*"
+            Resource:
+              - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
 # Requirements --- END ---
 
 # API Gateway --- START ---
