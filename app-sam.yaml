@@ -131,10 +131,10 @@ Resources:
             Effect: Allow
             Action: 'dynamodb:*'
             Resource:
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}/index/*'
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}/idnex/*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ObjectsTable}'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ObjectsTable}/index/*'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PostsTable}'
+              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${PostsTable}/index/*'
           -
             Effect: Allow
             Action: 's3:*'
