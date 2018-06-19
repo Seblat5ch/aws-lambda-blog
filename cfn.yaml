@@ -201,6 +201,7 @@ Resources:
                           - 's3:PutObjectAcl'
                       - Effect: Allow
                         Resource:
+                          - !Sub 'arn:aws:s3:::${BuildArtifactsBucket}'
                           - !Sub 'arn:aws:s3:::${ArticlesBucket}'
                         Action:
                           - 's3:ListBucket'
