@@ -68,6 +68,8 @@ Parameters:
       - PriceClass_200
       - PriceClass_All
     Default: PriceClass_100
+  LambdaPolicyName:
+    Type: String
 
 Outputs:
   ApiUrl:
@@ -116,26 +118,6 @@ Resources:
         DomainName: !Sub ${SiteBaseUrl}
         ValidationDomain: !Sub ${ValidationDomain}
         CertRegion: us-east-1
-
-  LambdaPolicy:
-    Type: "AWS::IAM::ManagedPolicy"
-    Properties:
-      Description: "Policy for API Lambda functions"
-      Path: "/"
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          -
-            Effect: "Allow"
-            Action: "dynamodb:*"
-            Resource:
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
-              - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
-          -
-            Effect: "Allow"
-            Action: "s3:*"
-            Resource:
-              - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
 # Requirements --- END ---
 
 # API Gateway --- START ---
@@ -156,7 +138,7 @@ Resources:
     Properties:
       Handler: get.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get1:
           Type: Api
@@ -182,7 +164,7 @@ Resources:
     Properties:
       Handler: about.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -204,7 +186,7 @@ Resources:
     Properties:
       Handler: add_category.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -218,7 +200,7 @@ Resources:
     Properties:
       Handler: get_posts_by_category.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get1:
           Type: Api
@@ -244,7 +226,7 @@ Resources:
     Properties:
       Handler: contact.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -258,7 +240,7 @@ Resources:
     Properties:
       Handler: delete_post.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -272,7 +254,7 @@ Resources:
     Properties:
       Handler: edit_category.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -286,7 +268,7 @@ Resources:
     Properties:
       Handler: get_categories.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -300,7 +282,7 @@ Resources:
     Properties:
       Handler: get_post_admin.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -314,7 +296,7 @@ Resources:
     Properties:
       Handler: get_settings.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -328,7 +310,7 @@ Resources:
     Properties:
       Handler: get_templates.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -342,7 +324,7 @@ Resources:
     Properties:
       Handler: list_posts.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -356,7 +338,7 @@ Resources:
     Properties:
       Handler: list_posts_admin.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -370,7 +352,7 @@ Resources:
     Properties:
       Handler: login.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -384,7 +366,7 @@ Resources:
     Properties:
       Handler: move_category.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -398,7 +380,7 @@ Resources:
     Properties:
       Handler: get_post.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -412,7 +394,7 @@ Resources:
     Properties:
       Handler: publish_post.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -426,7 +408,7 @@ Resources:
     Properties:
       Handler: remove_category.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -440,7 +422,7 @@ Resources:
     Properties:
       Handler: rss.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         get:
           Type: Api
@@ -454,7 +436,7 @@ Resources:
     Properties:
       Handler: send_message.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -468,7 +450,7 @@ Resources:
     Properties:
       Handler: set_settings.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -482,7 +464,7 @@ Resources:
     Properties:
       Handler: upload_post.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -496,7 +478,7 @@ Resources:
     Properties:
       Handler: unpublish_post.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -510,7 +492,7 @@ Resources:
     Properties:
       Handler: upload_image.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api
@@ -524,7 +506,7 @@ Resources:
     Properties:
       Handler: upload_template_image.handler
       CodeUri: build/
-      Policies: !GetAtt LambdaPolicy.ManagedPolicyName
+      Policies: !Ref LambdaPolicyName
       Events:
         post:
           Type: Api

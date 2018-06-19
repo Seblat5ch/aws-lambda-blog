@@ -92,6 +92,7 @@ Outputs:
     Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${AWS::StackName}_pipeline'
 
 Resources:
+    # S3 --- START ---
     ArticlesBucket:
         Type: AWS::S3::Bucket
         DeletionPolicy: Retain
@@ -151,6 +152,28 @@ Resources:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
     # DynamoDB --- END ---
+
+    # Lambda policy for Lambdas
+    LambdaPolicy:
+      Type: AWS::IAM::ManagedPolicy
+      Properties:
+        Description: Policy for API Lambda functions
+        ManagedPolicyName: !Sub '${AWS::StackName}_LambdaPolicy'
+        Path: "/"
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            -
+              Effect: Allow
+              Action: 'dynamodb:*'
+              Resource:
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
+                - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
+            -
+              Effect: Allow
+              Action: 's3:*'
+              Resource:
+                - !Sub 'arn:aws:s3:::${ArticlesBucket}/*'
 
     # Code repository for the service
     CodeRepository:
@@ -363,6 +386,7 @@ Resources:
                             "ObjectsTable": "${objectsTable}",
                             "PostsTable": "${postsTable}",
                             "ArticlesBucket": "${ArticlesBucket}",
+                            "LambdaPolicyName": "${AWS::StackName}_LambdaPolicy",
                             "BuildArtifactsBucket": "${BuildArtifactsBucket}",
                             "SiteBaseUrl": "${SiteBaseUrl}",
                             "ValidationDomain": "${ValidationDomain}",
