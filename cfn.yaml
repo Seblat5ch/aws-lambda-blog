@@ -209,7 +209,9 @@ Resources:
                       - Effect: Allow
                         Resource:
                           - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}'
+                          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${objectsTable}/index/*'
                           - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}'
+                          - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${postsTable}/idnex/*'
                         Action:
                           - 'dynamodb:*'
     CodeBuildProject:
