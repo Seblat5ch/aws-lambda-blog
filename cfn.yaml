@@ -134,8 +134,6 @@ Resources:
         KeySchema:
           - AttributeName: post_id
             KeyType: HASH
-          - AttributeName: date
-            KeyType: RANGE
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
