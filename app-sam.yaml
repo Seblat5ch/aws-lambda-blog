@@ -73,9 +73,9 @@ Outputs:
   ApiUrl:
     Description: URL for application
     Value: !Sub 'https://${BlogApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
-  CertificateArn:
-    Description: SSL certificate ARN
-    Value: !GetAtt ACM.Outputs.CertificateArn
+  BetaBlogUrl:
+    Description: URL for application
+    Value: !Sub 'https://${SiteBaseUrl}'
 
 Globals:
   Api:
