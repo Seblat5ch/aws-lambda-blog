@@ -455,7 +455,7 @@ Resources:
                       commands:
                         - git config --global credential.helper '!aws codecommit credential-helper $@'
                         - git config --global credential.UseHttpPath true
-                        - cd $CODEBUILD_SRC_DIR; git push $DESTINATION_REPO
+                        - cd $CODEBUILD_SRC_DIR; git push $DESTINATION_REPO master
 
     CloneExecutionRole:
         Type: AWS::IAM::Role
